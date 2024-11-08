@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nutrition Logger</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 2rem;
+        }
+
+        .search-section {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+
+        .search-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .search-container input {
+            flex: 1;
+            padding: 0.8rem;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .search-container button {
+            padding: 0.8rem 1.5rem;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .search-container button:hover {
+            background-color: #2980b9;
+        }
+
+        .results {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .food-item {
+            background-color: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            transition: transform 0.2s;
+            position: relative;
+        }
+
+        .food-item:hover {
+            transform: translateY(-2px);
+        }
+
+        .food-header {
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .food-header h3 {
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+
+        .food-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #666;
+            background-color: white;
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+        }
+
+        .meta-item strong {
+            color: #2c3e50;
+        }
+
+        .nutrition-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .nutrition-item {
+            background-color: white;
+            padding: 1rem;
+            border-radius: 6px;
+        }
+
+        .nutrition-item h4 {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .nutrition-item p {
+            color: #2c3e50;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+            display: none;
+        }
+
+        .add-food-controls {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .add-food-controls select,
+        .add-food-controls input {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .add-food-controls button {
+            padding: 0.5rem 1rem;
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .add-food-controls button:hover {
+            background-color: #219a52;
+        }
+
+        .daily-log {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 2rem;
+        }
+
+        .daily-log h2 {
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .meal-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .meal-section h3 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #eee;
+        }
+
+        .logged-food-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            background-color: #f8f9fa;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .logged-food-item button {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 0.3rem 0.6rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .daily-totals {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 2px solid #eee;
+        }
+
+        .daily-totals h3 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+
+        .total-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .total-item strong {
+            color: #2c3e50;
+        }
+
+        .download-btn {
+            margin-top: 1rem;
+            padding: 0.8rem 1.5rem;
+            background-color: #e67e22;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+
+        .download-btn:hover {
+            background-color: #d35400;
+        }
+
+        .rda {
+            font-size: 0.8em;
+            color: #888;
+            margin-left: 4px;
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="search-section">
+            <div class="header">
+                <h1>SMSU - Nutrition Logger</h1>
+                <p>Search for food and add it to your daily log</p>
+            </div>
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="Enter food name (e.g., milk, apple, chicken breast)">
+                <select id="categorySelect">
+                    <option value="">All Categories</option>
+                    <option value="Dairy and Egg Products">Dairy and Egg Products</option>
+                    <option value="Fats and Oils">Fats and Oils</option>
+                    <option value="Poultry Products">Poultry Products</option>
+                    <option value="Soups, Sauces, and Gravies">Soups, Sauces, and Gravies</option>
+                    <option value="Breakfast Cereals">Breakfast Cereals</option>
+                    <option value="Fruits and Fruit Juices">Fruits and Fruit Juices</option>
+                    <option value="Vegetables and Vegetable Products">Vegetables and Vegetable Products</option>
+                    <option value="Nut and Seed Products">Nut and Seed Products</option>
+                    <option value="Beef Products">Beef Products</option>
+                    <option value="Beverages">Beverages</option>
+                    <option value="Legumes and Legume Products">Legumes and Legume Products</option>
+                    <option value="Lamb, Veal, and Game Products">Lamb, Veal, and Game Products</option>
+                    <option value="Sweets">Sweets</option>
+                    <option value="Cereal Grains and Pasta">Cereal Grains and Pasta</option>
+                    <option value="Fast Foods">Fast Foods</option>
+                    <option value="Snacks">Snacks</option>
+                </select>
+                <button onclick="searchFood()">Search</button>
+            </div>
+            <div id="loading" class="loading">Searching for nutritional information...</div>
+            <div id="results" class="results"></div>
+        </div>
+        <div class="daily-log">
+            <h2>Daily Food Log</h2>
+            <div class="meal-section">
+                <h3>Breakfast</h3>
+                <div id="breakfast-items"></div>
+            </div>
+            <div class="meal-section">
+                <h3>Lunch</h3>
+                <div id="lunch-items"></div>
+            </div>
+            <div class="meal-section">
+                <h3>Dinner</h3>
+                <div id="dinner-items"></div>
+            </div>
+            <div class="meal-section">
+                <h3>Snacks</h3>
+                <div id="snacks-items"></div>
+            </div>
+            <div class="daily-totals">
+                <h3>Daily Totals</h3>
+                <div id="daily-totals"></div>
+            </div>
+            <button class="download-btn" onclick="downloadPDF()">Download Daily Log as PDF</button>
+            <center><br>by Taner Erdogan<br></center>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = '6r5FBKt2oOfyaH2LUNXzcVPaNB4e7ICxLhz3KE0J';
+        const API_ENDPOINT = 'https://api.nal.usda.gov/fdc/v1';
+
+        const searchInput = document.getElementById('searchInput');
+        const categorySelect = document.getElementById('categorySelect');
+        const resultsContainer = document.getElementById('results');
+        const loadingIndicator = document.getElementById('loading');
+
+        let loggedFoods = {
+            breakfast: [],
+            lunch: [],
+            dinner: [],
+            snacks: []
+        };
+
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchFood();
+            }
+        });
+
+        async function searchFood() {
+            const query = searchInput.value.trim();
+            const category = categorySelect.value.trim();
+            if (!query) return;
+
+            showLoading(true);
+            clearResults();
+
+            try {
+                let url = `${API_ENDPOINT}/foods/search?api_key=${API_KEY}&query=${encodeURIComponent(query)}&pageSize=8`;
+                if (category) {
+                    url += `&foodCategory=${encodeURIComponent(category)}`;
+                }
+
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.foods && data.foods.length > 0) {
+                    data.foods.forEach(food => displayFoodItem(food));
+                } else {
+                    showNoResults();
+                }
+            } catch (error) {
+                showError();
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function displayFoodItem(food) {
+            const foodElement = document.createElement('div');
+            foodElement.className = 'food-item';
+            
+            const nutrients = {
+                'Energy': food.foodNutrients.find(n => n.nutrientName === 'Energy')?.value || 0,
+                'Protein': food.foodNutrients.find(n => n.nutrientName === 'Protein')?.value || 0,
+                'Total fat': food.foodNutrients.find(n => n.nutrientName === 'Total lipid (fat)')?.value || 0,
+                'Carbohydrates': food.foodNutrients.find(n => n.nutrientName === 'Carbohydrate, by difference')?.value || 0,
+                'Fiber': food.foodNutrients.find(n => n.nutrientName === 'Fiber, total dietary')?.value || 0,
+                'Sugars': food.foodNutrients.find(n => n.nutrientName.toLowerCase().includes('sugars'))?.value || 0,
+        
+                // Vitamins
+                'Vitamin A': food.foodNutrients.find(n => n.nutrientName.includes('Vitamin A'))?.value || 0,
+                'Vitamin C': food.foodNutrients.find(n => n.nutrientName.includes('Vitamin C'))?.value || 0,
+                'Vitamin D': food.foodNutrients.find(n => n.nutrientName.includes('Vitamin D'))?.value || 0,
+                'Vitamin E': food.foodNutrients.find(n => n.nutrientName.includes('Vitamin E'))?.value || 0,
+                'Vitamin K': food.foodNutrients.find(n => n.nutrientName.includes('Vitamin K'))?.value || 0,
+                'Vitamin B1': food.foodNutrients.find(n => n.nutrientName.includes('Thiamin'))?.value || 0,
+                'Vitamin B2': food.foodNutrients.find(n => n.nutrientName.includes('Riboflavin'))?.value || 0,
+                'Vitamin B6': food.foodNutrients.find(n => n.nutrientName.includes('Vitamin B-6'))?.value || 0,
+                'Vitamin B12': food.foodNutrients.find(n => n.nutrientName.includes('Vitamin B-12'))?.value || 0
+            };
+        
+            const brandOwner = food.brandOwner || 'Generic';
+            const brandName = food.brandName || 'Not specified';
+            const foodCategory = food.foodCategory || 'Not specified';
+        
+            foodElement.innerHTML = `
+                <div class="food-header">
+                    <h3>${food.description} <span style="font-size: 0.9em; color: #666;">(per 100g)</span></h3>
+                    <div class="food-meta">
+                        <div class="meta-item">
+                            <span>Brand:</span>
+                            <strong>${brandName}</strong>
+                        </div>
+                        <div class="meta-item">
+                            <span>Manufacturer:</span>
+                            <strong>${brandOwner}</strong>
+                        </div>
+                        <div class="meta-item">
+                            <span>Category:</span>
+                            <strong>${foodCategory}</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="nutrition-grid">
+                    <div class="nutrition-item">
+                        <h4>Calories</h4>
+                        <p>${Math.round(nutrients['Energy'])} kcal</p>
+                    </div>
+                    <div class="nutrition-item">
+                        <h4>Protein</h4>
+                        <p>${nutrients['Protein'].toFixed(1)}g</p>
+                    </div>
+                    <div class="nutrition-item">
+                        <h4>Fat</h4>
+                        <p>${nutrients['Total fat'].toFixed(1)}g</p>
+                    </div>
+                    <div class="nutrition-item">
+                        <h4>Carbs</h4>
+                        <p>${nutrients['Carbohydrates'].toFixed(1)}g</p>
+                    </div>
+                    <div class="nutrition-item">
+                        <h4>Fiber</h4>
+                        <p>${nutrients['Fiber'].toFixed(1)}g</p>
+                    </div>
+                    <div class="nutrition-item">
+                        <h4>Sugars</h4>
+                        <p>${nutrients['Sugars'].toFixed(1)}g</p>
+                    </div>
+                    <!-- Add vitamin values -->
+                    ${Object.entries(nutrients).filter(([key, value]) => key.startsWith('Vitamin') && value > 0).map(([vitamin, value]) => `
+                        <div class="nutrition-item">
+                            <h4>${vitamin}</h4>
+                            <p>${value} µg</p>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="add-food-controls">
+                    <select class="meal-select">
+                        <option value="breakfast">Breakfast</option>
+                        <option value="lunch">
+        <option value="dinner">Dinner</option>
+        <option value="snacks">Snacks</option>
+    </select>
+    <input type="number" placeholder="Enter quantity" min="1" class="size-input">
+    <select class="unit-select">
+        <option value="g">g</option>
+        <option value="oz">oz</option>
+        <option value="lb">lb</option>
+        <option value="cup">cup</option>
+        <option value="count_small">count (small)</option>
+        <option value="count_medium">count (medium)</option>
+        <option value="count_large">count (large)</option>
+    </select>
+    <button onclick="addFoodToLog('${food.description}', '${brandName}', '${brandOwner}', '${foodCategory}', ${nutrients.Energy}, ${nutrients.Protein}, ${nutrients['Total fat']}, ${nutrients.Carbohydrates}, ${nutrients.Fiber}, ${nutrients.Sugars}, ${nutrients['Vitamin A'] || 0}, ${nutrients['Vitamin C'] || 0}, ${nutrients['Vitamin D'] || 0}, ${nutrients['Vitamin E'] || 0}, ${nutrients['Vitamin K'] || 0}, ${nutrients['Vitamin B1'] || 0}, ${nutrients['Vitamin B2'] || 0}, ${nutrients['Vitamin B6'] || 0}, ${nutrients['Vitamin B12'] || 0}, event)">Add to Log</button>
+</div>
+    `;
+
+    resultsContainer.appendChild(foodElement);
+}
+        
+
+function addFoodToLog(name, brandName, brandOwner, category, caloriesPer100g, proteinPer100g, fatPer100g, carbsPer100g, fiberPer100g, sugarsPer100g, vitaminA, vitaminC, vitaminD, vitaminE, vitaminK, vitaminB1, vitaminB2, vitaminB6, vitaminB12, event) {
+    const mealSelect = event.target.parentElement.querySelector('.meal-select').value;
+    const quantity = parseFloat(event.target.parentElement.querySelector('.size-input').value);
+    const unit = event.target.parentElement.querySelector('.unit-select').value;
+
+    if (!quantity || quantity <= 0) {
+        alert("Please enter a valid quantity.");
+        return;
+    }
+
+    // Convert quantity to grams based on the unit
+    let quantityInGrams;
+    if (unit === 'g') {
+        quantityInGrams = quantity;
+    } else if (unit === 'oz') {
+        quantityInGrams = quantity * 28.35; // 1 oz = 28.35 g
+    } else if (unit === 'lb') {
+        quantityInGrams = quantity * 453.592; // 1 lb = 453.592 g
+    } else if (unit === 'cup') {
+        quantityInGrams = quantity * 240; // Approximation: 1 cup = 240 g (this may vary for different foods)
+    } else if (unit === 'count_small') {
+        quantityInGrams = quantity * 50; // Approximation for a small count, adjust as needed
+    } else if (unit === 'count_medium') {
+        quantityInGrams = quantity * 100; // Approximation for a medium count, adjust as needed
+    } else if (unit === 'count_large') {
+        quantityInGrams = quantity * 150; // Approximation for a large count, adjust as needed
+    }
+
+    // Calculate nutrients based on quantity in grams
+    const foodItem = {
+        name,
+        brandName,
+        brandOwner,
+        category,
+        size: quantity,
+        unit,
+        nutrients: {
+            Energy: (caloriesPer100g / 100) * quantityInGrams,
+            Protein: (proteinPer100g / 100) * quantityInGrams,
+            'Total fat': (fatPer100g / 100) * quantityInGrams,
+            Carbohydrates: (carbsPer100g / 100) * quantityInGrams,
+            Fiber: (fiberPer100g / 100) * quantityInGrams,
+            Sugars: (sugarsPer100g / 100) * quantityInGrams,
+            'Vitamin A': (vitaminA / 100) * quantityInGrams,
+            'Vitamin C': (vitaminC / 100) * quantityInGrams,
+            'Vitamin D': (vitaminD / 100) * quantityInGrams,
+            'Vitamin E': (vitaminE / 100) * quantityInGrams,
+            'Vitamin K': (vitaminK / 100) * quantityInGrams,
+            'Vitamin B1': (vitaminB1 / 100) * quantityInGrams,
+            'Vitamin B2': (vitaminB2 / 100) * quantityInGrams,
+            'Vitamin B6': (vitaminB6 / 100) * quantityInGrams,
+            'Vitamin B12': (vitaminB12 / 100) * quantityInGrams
+        }
+    };
+
+    // Add the food item to the selected meal in loggedFoods
+    loggedFoods[mealSelect].push(foodItem);
+
+    // Update food log display and totals
+    updateFoodLog();
+    updateDailyTotals();
+}
+
+
+        function updateFoodLog() {
+            Object.keys(loggedFoods).forEach(meal => {
+                const container = document.getElementById(`${meal}-items`);
+                container.innerHTML = '';
+
+                loggedFoods[meal].forEach((food, index) => {
+                    const foodElement = document.createElement('div');
+                    foodElement.className = 'logged-food-item';
+                    foodElement.innerHTML = `
+                        <span>${food.name} - ${Math.round(food.nutrients.Energy)} kcal - ${food.size}${food.unit} - ${food.brandName} by ${food.brandOwner} (${food.category})</span>
+                        <button onclick="removeFromLog('${meal}', ${index})">Remove</button>
+                    `;
+                    container.appendChild(foodElement);
+                });
+            });
+        }
+
+        function updateDailyTotals() {
+            const totals = {
+                'Energy': 0,
+                'Protein': 0,
+                'Total fat': 0,
+                'Carbohydrates': 0,
+                'Fiber': 0,
+                'Sugars': 0
+            };
+
+            Object.values(loggedFoods).forEach(mealFoods => {
+                mealFoods.forEach(food => {
+                    Object.keys(totals).forEach(nutrient => {
+                        totals[nutrient] += food.nutrients[nutrient] || 0;
+                    });
+                });
+            });
+
+            const totalsContainer = document.getElementById('daily-totals');
+            totalsContainer.innerHTML = `
+                <div class="total-item">
+                    <span>Total Calories:</span>
+                    <strong>${Math.round(totals['Energy'])} kcal</strong>
+                </div>
+                <div class="total-item">
+                    <span>Total Protein:</span>
+                    <strong>${totals['Protein'].toFixed(1)}g</strong>
+                </div>
+                <div class="total-item">
+                    <span>Total Fat:</span>
+                    <strong>${totals['Total fat'].toFixed(1)}g</strong>
+                </div>
+                <div class="total-item">
+                    <span>Total Carbs:</span>
+                    <strong>${totals['Carbohydrates'].toFixed(1)}g</strong>
+                </div>
+                <div class="total-item">
+                    <span>Total Fiber:</span>
+                    <strong>${totals['Fiber'].toFixed(1)}g</strong>
+                </div>
+                <div class="total-item">
+                    <span>Total Sugars:</span>
+                    <strong>${totals['Sugars'].toFixed(1)}g</strong>
+                </div>
+            `;
+        }
+
+        function removeFromLog(meal, index) {
+            loggedFoods[meal].splice(index, 1);
+            updateFoodLog();
+            updateDailyTotals();
+        }
+
+        async function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.setFontSize(18);
+            doc.text("Daily Food Log", 10, 10);
+
+            let yOffset = 20;
+            Object.keys(loggedFoods).forEach(meal => {
+                doc.setFontSize(14);
+                doc.text(meal.charAt(0).toUpperCase() + meal.slice(1), 10, yOffset);
+                yOffset += 10;
+
+                loggedFoods[meal].forEach(food => {
+                    doc.setFontSize(12);
+                    doc.text(`${food.name} - ${food.size}${food.unit} (${Math.round(food.nutrients.Energy)} kcal) - ${food.brandName} by ${food.brandOwner} (${food.category})`, 10, yOffset);
+                    yOffset += 8;
+                });
+
+                yOffset += 10;
+            });
+
+            doc.setFontSize(16);
+            doc.text("Daily Totals", 10, yOffset);
+            yOffset += 10;
+
+            const totals = {
+                'Energy': 0,
+                'Protein': 0,
+                'Total fat': 0,
+                'Carbohydrates': 0,
+                'Fiber': 0,
+                'Sugars': 0
+            };
+
+            Object.values(loggedFoods).forEach(mealFoods => {
+                mealFoods.forEach(food => {
+                    Object.keys(totals).forEach(nutrient => {
+                        totals[nutrient] += food.nutrients[nutrient] || 0;
+                    });
+                });
+            });
+
+            doc.setFontSize(12);
+            doc.text(`Total Calories: ${Math.round(totals['Energy'])} kcal`, 10, yOffset);
+            yOffset += 8;
+            doc.text(`Total Protein: ${totals['Protein'].toFixed(1)}g`, 10, yOffset);
+            yOffset += 8;
+            doc.text(`Total Fat: ${totals['Total fat'].toFixed(1)}g`, 10, yOffset);
+            yOffset += 8;
+            doc.text(`Total Carbs: ${totals['Carbohydrates'].toFixed(1)}g`, 10, yOffset);
+            yOffset += 8;
+            doc.text(`Total Fiber: ${totals['Fiber'].toFixed(1)}g`, 10, yOffset);
+            yOffset += 8;
+            doc.text(`Total Sugars: ${totals['Sugars'].toFixed(1)}g`, 10, yOffset);
+
+            doc.save("Daily_Food_Log.pdf");
+        }
+
+        function showLoading(show) {
+            loadingIndicator.style.display = show ? 'block' : 'none';
+        }
+
+        function clearResults() {
+            resultsContainer.innerHTML = '';
+        }
+
+        function showNoResults() {
+            resultsContainer.innerHTML = `
+                <div class="food-item">
+                    <h3>No results found</h3>
+                    <p>Try searching for a different food item.</p>
+                </div>
+            `;
+        }
+
+        function showError() {
+            resultsContainer.innerHTML = `
+                <div class="food-item">
+                    <h3>Error</h3>
+                    <p>There was an error fetching the data. Please try again later.</p>
+                </div>
+            `;
+        }
+    </script>
+   
+    </body>
+</html>
